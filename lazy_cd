@@ -1,0 +1,93 @@
+#!/usr/bin/env ruby
+
+# frozen_string_literal: true
+
+require "pathname"
+require "fileutils"
+require "byebug"
+
+class LazyCdCommand
+  class << self
+    def main
+      # if argv empty should exist not continue
+      exit unless argv?
+
+      current_folders = search_folders
+      exit unless current_folders
+
+      puts_folders(current_folders)
+      current_path = choose_path(current_folders)
+      exit unless current_path
+
+      choose_terminal(current_path)
+    end
+
+    private
+
+    def argv?
+      return true unless ARGV.empty?
+
+      puts "Please Add your folder name arguments"
+      false
+    end
+
+    def folder_name
+      ARGV[0]
+    end
+
+    def search_folders
+      folders = Pathname.new(Dir.home).glob("**/#{folder_name}")
+      if folders.empty?
+        puts "you don't have folder with this name"
+        return
+      end
+      folders
+    end
+
+    def puts_folders(search_folders)
+      puts "please choose your path number"
+      search_folders.each_with_index do |path, idx|
+        puts "#{idx}. #{path}"
+      end
+    end
+
+    def choose_path(search_folders)
+      num_path = $stdin.gets.chomp.to_i
+      current_search = search_folders[num_path]
+      if current_search.nil?
+        puts "please choose correct path "
+        return
+      end
+      puts "your choose #{current_search}"
+      current_search
+    end
+
+    def your_current_shell
+      `echo $SHELL`.chomp.split("/")[-1]
+    end
+
+    def process_terminal
+      puts "your default shell is '#{your_current_shell}' do you need use it?  Y/N"
+      shell_option = $stdin.gets.chomp.to_s.downcase
+      if shell_option == "n"
+        shells = `tail --lines=+2 /etc/shells`
+        shells = shells.gsub!(/[^0-9A-Za-z]|usr|bin/, " ").split.uniq!
+        puts "Choose your running shell"
+        shells.each_with_index do |shell, idx|
+          puts "#{idx}. #{shell}"
+        end
+        num_shell = $stdin.gets.chomp.to_i
+        shells[num_shell]
+      end
+    end
+
+    def choose_terminal(current_path)
+      FileUtils.chdir(current_path)
+      current_shell = process_terminal || your_current_shell
+
+      exec current_shell.to_s
+    end
+  end
+end
+
+LazyCdCommand.main
