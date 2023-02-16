@@ -6,18 +6,15 @@ require "pathname"
 require "fileutils"
 require "byebug"
 
+
+# This class represents an lazy cd command .
 class LazyCdCommand
   class << self
     def main
-      # if argv empty should exist not continue
-      exit unless argv?
-
       current_folders = search_folders
-      exit unless current_folders
 
       puts_folders(current_folders)
       current_path = choose_path(current_folders)
-      exit unless current_path
 
       choose_terminal(current_path)
     end
@@ -28,7 +25,7 @@ class LazyCdCommand
       return true unless ARGV.empty?
 
       puts "Please Add your folder name arguments"
-      false
+      exit
     end
 
     def folder_name
@@ -39,7 +36,7 @@ class LazyCdCommand
       folders = Pathname.new(Dir.home).glob("**/#{folder_name}")
       if folders.empty?
         puts "you don't have folder with this name"
-        return
+        exit
       end
       folders
     end
@@ -56,7 +53,7 @@ class LazyCdCommand
       current_search = search_folders[num_path]
       if current_search.nil?
         puts "please choose correct path "
-        return
+        exit
       end
       puts "your choose #{current_search}"
       current_search
@@ -69,6 +66,10 @@ class LazyCdCommand
     def process_terminal
       puts "your default shell is '#{your_current_shell}' do you need use it?  Y/N"
       shell_option = $stdin.gets.chomp.to_s.downcase
+      if shell_option == "y"
+        return your_current_shell
+      end
+
       if shell_option == "n"
         shells = `tail --lines=+2 /etc/shells`
         shells = shells.gsub!(/[^0-9A-Za-z]|usr|bin/, " ").split.uniq!
@@ -77,13 +78,18 @@ class LazyCdCommand
           puts "#{idx}. #{shell}"
         end
         num_shell = $stdin.gets.chomp.to_i
-        shells[num_shell]
+        terminal = shells[num_shell]
+        if terminal.nil?
+          puts "please choose correct terminal "
+          exit
+        end
+        terminal
       end
     end
 
     def choose_terminal(current_path)
       FileUtils.chdir(current_path)
-      current_shell = process_terminal || your_current_shell
+      current_shell = process_terminal
 
       exec current_shell.to_s
     end
